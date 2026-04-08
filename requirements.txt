@@ -1,0 +1,20 @@
+# ============================================================
+#  requirements.txt — Danh sách thư viện hệ thống VSL
+# ============================================================
+
+# Core ML
+tensorflow>=2.10.0
+mediapipe>=0.10.0
+numpy>=1.23.0
+
+# Data / Training
+scikit-learn>=1.2.0
+matplotlib>=3.7.0
+
+# Computer Vision
+opencv-python>=4.7.0
+
+# Utilities (thường đã có sẵn)
+# json (built-in)
+# collections (built-in)
+# time (built-in)

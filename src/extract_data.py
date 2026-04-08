@@ -1,0 +1,1 @@
+# Script dùng MediaPipe trích xuất tọa độ từ video

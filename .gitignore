@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+.venv/
+venv/
+env/
+
+.idea/
+.vscode/
+*.iml
+
+*.log
+*.tmp
+*.temp
+
+
+.env
+.env.*
+
+data/raw_videos/
+data/extracted_data/
+
+# File model lớn
+models/
+*.h5

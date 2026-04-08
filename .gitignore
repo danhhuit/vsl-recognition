@@ -18,8 +18,7 @@ env/
 .env
 .env.*
 
-data/raw_videos/
-data/extracted_data/
+#data/raw_videos/
 
 # File model lớn
 models/

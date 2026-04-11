@@ -1,0 +1,10 @@
+torch
+torchvision
+torchaudio
+mediapipe
+opencv-python
+numpy
+scikit-learn
+matplotlib
+seaborn
+# pip install -r requirements.txt

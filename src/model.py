@@ -1,0 +1,1 @@
+# Class định nghĩa kiến trúc mạng nơ-ron LSTM

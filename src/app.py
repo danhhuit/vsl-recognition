@@ -1,1 +1,0 @@
-# Script chạy ứng dụng Real-time qua Webcam

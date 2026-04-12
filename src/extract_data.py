@@ -18,7 +18,8 @@ LABELS = ["bang_chu_cai", "cam_on", "chao", "ten_la", "toi"]
 SEQ_LEN = 30
 
 # Khởi tạo module nhận diện tay của MediaPipe
-mp_hands = mp.solutions.hands
+import mediapipe.python.solutions.hands as mp_hands
+import mediapipe.python.solutions.drawing_utils as mp_drawing
 
 
 def ensure_dirs():

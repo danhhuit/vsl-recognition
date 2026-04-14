@@ -6,6 +6,7 @@ from pathlib import Path
 
 import mediapipe.python.solutions.hands as mp_hands
 
+
 # =========================
 # Cấu hình đường dẫn và tham số
 # =========================

@@ -1,1 +1,6 @@
-# Script chạy ứng dụng Real-time qua Webcam
+def main():
+    print("[INFO] app.py hiện đang để placeholder. Chưa triển khai ở giai đoạn này.")
+
+
+if __name__ == "__main__":
+    main()

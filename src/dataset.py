@@ -8,6 +8,7 @@ from config import (
     METADATA_PATH,
     BATCH_SIZE,
     TRAIN_RATIO,
+    TEST_RATIO,
     NUM_WORKERS,
     RANDOM_SEED,
     SEQ_LEN,
@@ -107,27 +108,32 @@ def get_dataloaders(
     metadata_path=METADATA_PATH,
     batch_size=BATCH_SIZE,
     train_ratio=TRAIN_RATIO,
+    test_ratio=TEST_RATIO,
     num_workers=NUM_WORKERS,
     seed=RANDOM_SEED,
 ):
+    """Chia dataset thành 3 phần: Train / Validation / Test."""
     dataset = VSLDataset(metadata_path=metadata_path)
 
     total = len(dataset)
     train_size = int(total * train_ratio)
-    val_size = total - train_size
+    test_size = int(total * test_ratio)
+    val_size = total - train_size - test_size
 
-    if train_size == 0 or val_size == 0:
+    if train_size == 0 or val_size == 0 or test_size == 0:
         raise ValueError(
-            f"[ERROR] Không thể chia train/validation với tổng mẫu = {total}."
+            f"[ERROR] Không thể chia train/val/test với tổng mẫu = {total}.\n"
+            f"        train={train_size}, val={val_size}, test={test_size}"
         )
 
     generator = torch.Generator().manual_seed(seed)
-    train_dataset, val_dataset = random_split(
-        dataset, [train_size, val_size], generator=generator
+    train_dataset, val_dataset, test_dataset = random_split(
+        dataset, [train_size, val_size, test_size], generator=generator
     )
 
     print(f"[INFO] Số mẫu train        : {train_size}")
     print(f"[INFO] Số mẫu validation   : {val_size}")
+    print(f"[INFO] Số mẫu test         : {test_size}")
 
     train_loader = DataLoader(
         train_dataset,
@@ -146,18 +152,26 @@ def get_dataloaders(
         pin_memory=torch.cuda.is_available(),
     )
 
-    return train_loader, val_loader, dataset
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=torch.cuda.is_available(),
+    )
+
+    return train_loader, val_loader, test_loader, dataset
 
 
 SignLanguageDataset = VSLDataset
 
 
 def main():
-    print("=" * 60)
+    print("\n" + "=" * 60)
     print("KIỂM TRA DATASET & DATALOADER")
     print("=" * 60)
 
-    train_loader, val_loader, dataset = get_dataloaders()
+    train_loader, val_loader, test_loader, dataset = get_dataloaders()
     print(f"[INFO] Label map          : {dataset.get_label_map()}")
 
     for sequences, labels in train_loader:

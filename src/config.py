@@ -9,6 +9,7 @@ DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw_videos"
 KEYPOINT_DIR = DATA_DIR / "keypoints"
 WEIGHTS_DIR = BASE_DIR / "weights"
+RESULTS_DIR = BASE_DIR / "results"
 
 METADATA_PATH = KEYPOINT_DIR / "metadata.csv"
 BEST_MODEL_PATH = WEIGHTS_DIR / "best_model.pth"
@@ -28,8 +29,10 @@ BATCH_SIZE = 16
 HIDDEN_SIZE = 128
 NUM_LAYERS = 2
 LEARNING_RATE = 1e-3
+NUM_EPOCHS = 50
 TRAIN_RATIO = 0.8
-VAL_RATIO = 0.2
+VAL_RATIO = 0.1
+TEST_RATIO = 0.1
 NUM_WORKERS = 0  # Windows-safe default
 RANDOM_SEED = 42
 
@@ -46,3 +49,4 @@ SUPPORTED_VIDEO_EXTENSIONS = ("*.mp4", "*.avi", "*.mov", "*.mkv")
 def ensure_project_dirs() -> None:
     KEYPOINT_DIR.mkdir(parents=True, exist_ok=True)
     WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)

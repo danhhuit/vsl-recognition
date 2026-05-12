@@ -1,0 +1,13 @@
+CLASSIFICATION REPORT
+============================================================
+              precision    recall  f1-score   support
+
+bang_chu_cai     1.0000    1.0000    1.0000         3
+      cam_on     0.0000    0.0000    0.0000         0
+        chao     0.0000    0.0000    0.0000         0
+      ten_la     0.0000    0.0000    0.0000         0
+         toi     0.0000    0.0000    0.0000         0
+
+    accuracy                         1.0000         3
+   macro avg     0.2000    0.2000    0.2000         3
+weighted avg     1.0000    1.0000    1.0000         3

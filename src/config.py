@@ -17,6 +17,7 @@ BEST_MODEL_PATH = WEIGHTS_DIR / "best_model.pth"
 # =========================
 # Data config
 # =========================
+#
 SEQ_LEN = 30
 NUM_HAND_LANDMARKS = 21
 COORDS_PER_LANDMARK = 3
@@ -26,8 +27,11 @@ INPUT_SIZE = NUM_HAND_LANDMARKS * COORDS_PER_LANDMARK  # 63
 # Training config
 # =========================
 BATCH_SIZE = 16
+#no ron ẩn => kha nang ghi nho dac trung
 HIDDEN_SIZE = 128
+#so lop LSTM xep chong len nhau
 NUM_LAYERS = 2
+#toc do hoc
 LEARNING_RATE = 1e-3
 NUM_EPOCHS = 50
 TRAIN_RATIO = 0.8
@@ -50,3 +54,17 @@ def ensure_project_dirs() -> None:
     KEYPOINT_DIR.mkdir(parents=True, exist_ok=True)
     WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# =========================
+# Feature config for realtime app
+# =========================
+_BASE_INPUT = NUM_HAND_LANDMARKS * COORDS_PER_LANDMARK  # 63 keypoints gốc
+USE_VELOCITY = False  # Giữ False nếu model đang train với INPUT_SIZE = 63
+
+# =========================
+# Realtime prediction config
+# =========================
+CONFIDENCE_THRESHOLD = 0.75      # Chỉ hiển thị dự đoán khi độ tin cậy >= 75%
+MIN_HAND_FRAMES_RATIO = 0.60     # Ít nhất 60% frame trong buffer phải phát hiện được tay
+APP_DEFAULT_LANGUAGE = "vi"      # "vi" hoặc "en"
+

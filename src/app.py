@@ -76,7 +76,7 @@ except ImportError:
 PLOTLY_LAYOUT = dict(
     paper_bgcolor="#11111b",
     plot_bgcolor="#1e1e2e",
-    font=dict(family="Inter, sans-serif", color="#cdd6f4", size=13), # Đã đổi font tại đây
+    font=dict(family="monospace", color="#cdd6f4", size=13), # Đã đổi font tại đây
     xaxis=dict(gridcolor="#313244", linecolor="#313244", zerolinecolor="#313244"),
     yaxis=dict(gridcolor="#313244", linecolor="#313244", zerolinecolor="#313244"),
     legend=dict(bgcolor="#1e1e2e", bordercolor="#313244", borderwidth=1),
@@ -314,10 +314,12 @@ def display_label(label: Any) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-html, body, [class*="css"], .stMarkdown, .stButton button, .stSelectbox, .stRadio, .stDataFrame, .stMetric, [data-testid="stCodeBlock"] pre {
-  font-family: "Inter", "Segoe UI", Arial, Tahoma, sans-serif !important;
+html, body, [class*="css"], .stMarkdown, .stButton button, .stSelectbox, .stRadio, .stDataFrame, .stMetric, [data-testid="stCodeBlock"] pre, h1, h2, h3, h4, h5, h6, p {
+  font-family: monospace !important;
+}
+.material-icons, .material-symbols-rounded, .material-symbols-outlined, [data-testid="stIconMaterial"] {
+  font-family: "Material Symbols Rounded", "Material Icons", sans-serif !important;
 }
 
 .main .block-container{padding-top:1rem;padding-bottom:2rem;max-width:1300px;}

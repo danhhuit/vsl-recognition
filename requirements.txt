@@ -1,17 +1,26 @@
-torch
-torchvision
-torchaudio
-mediapipe
+# torch
+# torchvision
+# torchaudio
+# mediapipe
+# opencv-python-headless
+# numpy
+# pandas
+# scikit-learn
+# matplotlib
+# seaborn
+# streamlit
+# Pillow
+# plotly
+streamlit
 opencv-python-headless
 numpy
 pandas
-scikit-learn
+torch
+plotly
+mediapipe
 matplotlib
 seaborn
-streamlit
-Pillow
-plotly
-
+scikit-learn
 # Cài đặt: pip install -r requirements.txt
 # Python: 3.11
 # Lưu ý mediapipe: pip install mediapipe==0.10.9 protobuf==3.20.3

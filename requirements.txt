@@ -2,7 +2,7 @@ torch
 torchvision
 torchaudio
 mediapipe
-opencv-python
+opencv-python-headless
 numpy
 pandas
 scikit-learn

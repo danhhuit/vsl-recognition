@@ -322,6 +322,14 @@ def main():
         "best_epoch": best_epoch,
     }
 
+    # --- Lưu arrays cho biểu đồ tương tác Plotly trên Streamlit ---
+    import json as _json
+    np.save(RESULTS_DIR / "y_true.npy", y_true)
+    np.save(RESULTS_DIR / "y_pred.npy", y_pred)
+    with open(RESULTS_DIR / "label_names.json", "w", encoding="utf-8") as _f:
+        _json.dump(label_names, _f, ensure_ascii=False)
+    print(f"[INFO] Đã lưu y_true/y_pred/label_names → {RESULTS_DIR} (dùng cho biểu đồ Plotly)")
+
 
     # --- 7. Tóm tắt ---
     print("\n" + "=" * 60)

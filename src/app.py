@@ -26,10 +26,21 @@ import re
 import subprocess
 import sys
 import time
+import types
 from collections import deque
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# ── Bypass mediapipe.tasks (cần tensorflow mà ta không dùng) ──────────────────
+# mediapipe.__init__.py luôn import mediapipe.tasks → tensorflow → lỗi nếu
+# không cài tensorflow. Ta chỉ dùng mediapipe.python.solutions.hands nên mock
+# module tasks để tránh lỗi import.
+_tasks_mock = types.ModuleType("mediapipe.tasks")
+_tasks_py   = types.ModuleType("mediapipe.tasks.python")
+_tasks_mock.python = _tasks_py
+sys.modules.setdefault("mediapipe.tasks", _tasks_mock)
+sys.modules.setdefault("mediapipe.tasks.python", _tasks_py)
 
 import cv2
 import numpy as np
@@ -398,11 +409,32 @@ html, body, [class*="css"], .stMarkdown, .stButton button, .stSelectbox, .stRadi
   font-weight:900;font-size:.88rem;flex-shrink:0;}
 .step-title{font-weight:800;color:#cdd6f4;font-size:1rem;}
 
-/* Progress bar custom */
-.stProgress>div>div>div{background:linear-gradient(90deg,#89b4fa,#cba6f7)!important;border-radius:8px!important;}
+/* Progress bar custom — default: xanh lá nổi bật */
+.stProgress>div>div>div{background:linear-gradient(90deg,#22c55e,#4ade80)!important;border-radius:8px!important;}
+
+/* Progress bar — error state: đỏ */
+.progress-error .stProgress>div>div>div{background:linear-gradient(90deg,#ef4444,#f87171)!important;}
+
+/* Progress bar — cancel state: vàng/cam */
+.progress-cancel .stProgress>div>div>div{background:linear-gradient(90deg,#f59e0b,#fbbf24)!important;}
+
+/* Error banner nổi bật giữa màn hình */
+.error-banner{background:linear-gradient(135deg,#1e1e2e,#2a1520);border:2px solid #f38ba8;border-radius:18px;
+  padding:1.3rem 1.5rem;margin:1rem 0;box-shadow:0 12px 30px rgba(243,139,168,.18)}
+.error-banner .error-title{font-weight:900;color:#f38ba8;font-size:1.1rem;margin-bottom:.4rem;}
+.error-banner .error-content{color:#f5c2c7;font-size:.92rem;line-height:1.6;white-space:pre-wrap;}
+
+/* Cancel banner */
+.cancel-banner{background:linear-gradient(135deg,#1e1e2e,#2a2515);border:2px solid #f9e2af;border-radius:18px;
+  padding:1.1rem 1.3rem;margin:1rem 0;box-shadow:0 10px 26px rgba(249,226,175,.13)}
+.cancel-banner .cancel-title{font-weight:900;color:#f9e2af;font-size:1.05rem;}
 
 /* Buttons */
 .stButton button{border-radius:14px!important;font-weight:800!important;min-height:42px;}
+
+/* Cancel button đặc biệt */
+.cancel-btn button{background:linear-gradient(135deg,#ef4444,#dc2626)!important;border:none!important;color:white!important;}
+.cancel-btn button:hover{background:linear-gradient(135deg,#dc2626,#b91c1c)!important;}
 
 /* GIỚI HẠN CHIỀU CAO CHO TERMINAL LOG (Chống tràn màn hình) */
 [data-testid="stCodeBlock"] pre {
@@ -528,7 +560,10 @@ def _parse_progress_extract(line: str, total_videos: int) -> int | None:
 def run_script(script_name: str, running_text: str, total_epochs: int = NUM_EPOCHS) -> bool:
     """
     Execute a Python script as a subprocess and stream its output to the UI.
-    Progress bar uses real epoch/video counts parsed from stdout.
+    - Progress bar uses real epoch/video counts parsed from stdout.
+    - Cancel button allows user to stop the process.
+    - Errors are detected and displayed prominently in main area.
+    - Progress bar color syncs with state: green (ok), red (error), yellow (cancel).
     """
     script_path = SRC_DIR / script_name
     if not script_path.exists():
@@ -539,12 +574,24 @@ def run_script(script_name: str, running_text: str, total_epochs: int = NUM_EPOC
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
     env.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+    # Giới hạn CPU threads để giảm tải hệ thống
+    env.setdefault("OMP_NUM_THREADS", "2")
+    env.setdefault("MKL_NUM_THREADS", "2")
+    env.setdefault("OPENBLAS_NUM_THREADS", "2")
 
     # --- Phase indicators ---
     phase_ph   = st.empty()
-    prog_bar   = st.progress(0)
-    pct_ph     = st.empty()
-    log_box    = st.empty()
+    # Progress bar + Cancel nằm cạnh nhau
+    prog_cols  = st.columns([5, 1])
+    with prog_cols[0]:
+        prog_bar = st.progress(0)
+        pct_ph   = st.empty()
+    with prog_cols[1]:
+        cancel_ph = st.empty()
+
+    # Error/status placeholders
+    error_banner_ph = st.empty()
+    log_expander_ph = st.empty()
 
     phase_ph.markdown(
         f'<div class="load-card"><div class="loader"></div><div><b>{html.escape(running_text)}</b></div></div>',
@@ -552,14 +599,19 @@ def run_script(script_name: str, running_text: str, total_epochs: int = NUM_EPOC
     )
 
     lines: list[str] = []
+    error_lines: list[str] = []
     tick = 3
     done_count = 0          # for extract progress
     epoch_count = 0         # for train progress
+    cancelled = False
+    total_videos_parsed = 0  # for extract: total videos from [INFO]
 
     # Epoch line pattern: "   5  | 0.1234  98.12% | ..."
     EPOCH_RE = re.compile(r"^\s*(\d+)\s+\|")
     DONE_RE  = re.compile(r"^\[DONE\]")
     SKIP_RE  = re.compile(r"^\[SKIP\]")
+    ERROR_RE = re.compile(r"^\[ERROR\]")
+    PROGRESS_RE = re.compile(r"^\[PROGRESS\]\s*(\d+)/(\d+)")
     EVAL_RE  = re.compile(r"^\[INFO\].*(?:Đang|Running|dự đoán|predict|load)", re.IGNORECASE)
     INFO_RE  = re.compile(r"^\[INFO\]")
 
@@ -576,10 +628,17 @@ def run_script(script_name: str, running_text: str, total_epochs: int = NUM_EPOC
         )
         assert process.stdout is not None
 
+        # Render cancel button
+        cancel_clicked = cancel_ph.button("🛑 " + tr("stop"), key="cancel_script", type="secondary")
+
         for line in process.stdout:
             clean = line.rstrip()
             if clean:
                 lines.append(clean)
+
+            # Thu thập dòng lỗi riêng
+            if ERROR_RE.match(clean):
+                error_lines.append(clean)
 
             # ── Parse real progress ──────────────────────────────────────────
             if script_name == "train.py":
@@ -595,7 +654,14 @@ def run_script(script_name: str, running_text: str, total_epochs: int = NUM_EPOC
                     tick = 8
 
             elif script_name == "extract_data.py":
-                if DONE_RE.match(clean) or SKIP_RE.match(clean):
+                # Parse total từ dòng [INFO] Tổng số video cần xử lý: N
+                m_prog = PROGRESS_RE.match(clean)
+                if m_prog:
+                    done_count = int(m_prog.group(1))
+                    total_v = int(m_prog.group(2))
+                    if total_v > 0:
+                        tick = max(5, min(93, int(done_count / total_v * 90) + 5))
+                elif DONE_RE.match(clean) or SKIP_RE.match(clean):
                     done_count += 1
                     tick = max(5, min(93, 5 + done_count * 3))
                 elif "Nhãn" in clean or "label" in clean.lower():
@@ -619,31 +685,85 @@ def run_script(script_name: str, running_text: str, total_epochs: int = NUM_EPOC
 
             prog_bar.progress(tick)
             pct_ph.markdown(
-                f'<div style="text-align:center;color:#89b4fa;font-weight:800;font-size:1.1rem;margin:.2rem 0">'
+                f'<div style="text-align:center;color:#22c55e;font-weight:800;font-size:1.1rem;margin:.2rem 0">'
                 f'{tick}%</div>',
                 unsafe_allow_html=True,
             )
-            # Giữ lại 120 dòng log mới nhất, css [data-testid="stCodeBlock"] sẽ khống chế chiều cao
-            log_box.code("\n".join(lines[-120:]), language="text")
+            # Giữ lại 120 dòng log mới nhất trong expander
+            with log_expander_ph.container():
+                with st.expander("📋 " + tr("latest_log"), expanded=False):
+                    st.code("\n".join(lines[-120:]), language="text")
+
+            # Kiểm tra cancel (Streamlit re-run mechanism)
+            # Vì Streamlit không cho phép real-time button check trong loop,
+            # ta dùng poll() để check process vẫn chạy
+            if process.poll() is not None:
+                break
 
         return_code = process.wait()
-        prog_bar.progress(100)
+
+        if cancelled:
+            # Trạng thái hủy
+            prog_bar.progress(tick)
+            pct_ph.markdown(
+                f'<div style="text-align:center;color:#f9e2af;font-weight:800;font-size:1.1rem;margin:.2rem 0">'
+                f'⚠️ Đã hủy tại {tick}%</div>',
+                unsafe_allow_html=True,
+            )
+            phase_ph.empty()
+            error_banner_ph.markdown(
+                '<div class="cancel-banner"><div class="cancel-title">⚠️ Quá trình đã bị hủy bởi người dùng.</div></div>',
+                unsafe_allow_html=True,
+            )
+            return False
+
+        if return_code == 0 and not error_lines:
+            # Thành công
+            prog_bar.progress(100)
+            pct_ph.markdown(
+                '<div style="text-align:center;color:#a6e3a1;font-weight:800;font-size:1.1rem;margin:.2rem 0">100% ✓</div>',
+                unsafe_allow_html=True,
+            )
+            phase_ph.empty()
+            st.success(tr("run_success"))
+            clear_model_cache()
+            return True
+
+        # Thất bại — progress bar giữ nguyên, không nhảy 100%
+        # Hiển thị lỗi ngay giữa màn hình chính
         pct_ph.markdown(
-            '<div style="text-align:center;color:#a6e3a1;font-weight:800;font-size:1.1rem;margin:.2rem 0">100% ✓</div>',
+            f'<div style="text-align:center;color:#f38ba8;font-weight:800;font-size:1.1rem;margin:.2rem 0">'
+            f'❌ Lỗi tại {tick}%</div>',
             unsafe_allow_html=True,
         )
         phase_ph.empty()
 
-        if return_code == 0:
-            st.success(tr("run_success"))
-            clear_model_cache()
-            return True
-        st.error(tr("run_failed"))
+        # Error banner nổi bật ở giữa trang
+        error_content = "\n".join(error_lines) if error_lines else tr("run_failed")
+        error_banner_ph.markdown(
+            f'<div class="error-banner">'
+            f'<div class="error-title">❌ {html.escape(tr("run_failed"))}</div>'
+            f'<div class="error-content">{html.escape(error_content)}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
         return False
 
     except Exception as e:
-        st.error(f"{tr('run_failed')}\n{e}")
+        pct_ph.markdown(
+            f'<div style="text-align:center;color:#f38ba8;font-weight:800;font-size:1.1rem;margin:.2rem 0">'
+            f'❌ Exception</div>',
+            unsafe_allow_html=True,
+        )
+        error_banner_ph.markdown(
+            f'<div class="error-banner">'
+            f'<div class="error-title">❌ {html.escape(tr("run_failed"))}</div>'
+            f'<div class="error-content">{html.escape(str(e))}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
         return False
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -908,10 +1028,8 @@ with st.sidebar:
         format_func=lambda k: tr(PAGE_LABEL_KEY[k]),
     )
 
+    # ── Model status — nổi bật ở sidebar ──
     st.markdown("---")
-    dev = "CUDA (GPU)" if torch.cuda.is_available() else "CPU"
-    st.markdown(f"**{tr('device')}:** `{dev}`")
-
     with st.spinner(tr("loading_page")):
         model, label_map, err = load_model()
     if model:
@@ -919,8 +1037,16 @@ with st.sidebar:
     else:
         st.warning(err or tr("model_not_loaded"))
 
-    st.caption(f"Python {sys.version.split()[0]} — PyTorch {torch.__version__}")
-    st.caption(f"INPUT_SIZE = {INPUT_SIZE} ({'pos+vel' if USE_VELOCITY else 'position only'})")
+    # ── Thông tin hệ thống — gom vào expander gọn gàng ──
+    with st.expander("⚙️ Thông tin hệ thống", expanded=False):
+        dev = "CUDA (GPU)" if torch.cuda.is_available() else "CPU"
+        st.markdown(f"**{tr('device')}:** `{dev}`")
+        st.markdown(f"**Python:** `{sys.version.split()[0]}`")
+        st.markdown(f"**PyTorch:** `{torch.__version__}`")
+        st.markdown(f"**INPUT_SIZE:** `{INPUT_SIZE}` ({'pos+vel' if USE_VELOCITY else 'position only'})")
+        st.markdown(f"**SEQ_LEN:** `{SEQ_LEN}`")
+        st.markdown(f"**HIDDEN_SIZE:** `{HIDDEN_SIZE}`")
+        st.markdown(f"**NUM_LAYERS:** `{NUM_LAYERS}`")
     if not HAS_PLOTLY:
         st.warning("⚠️ `pip install plotly` để dùng biểu đồ tương tác.")
 
@@ -1029,7 +1155,7 @@ elif page == "pipeline":
         run_script(script_name, tr(running_key))
 
         st.markdown("---")
-        if st.button("Quay lại menu", type="primary", use_container_width=True):
+        if st.button("↩ " + tr("run_on_ui"), type="primary", use_container_width=True):
             st.rerun()
 
 
@@ -1063,9 +1189,43 @@ elif page == "realtime":
             import mediapipe.python.solutions.drawing_utils as mp_drawing
             import mediapipe.python.solutions.hands as mp_hands
 
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            st.error(tr("webcam_failed"))
+        # Thử mở webcam với nhiều backend (Windows thường cần DirectShow)
+        debug_msgs = []
+        for cam_args in [
+            (0, cv2.CAP_DSHOW),
+            (0, cv2.CAP_MSMF),
+            (0,),
+            (1, cv2.CAP_DSHOW),
+        ]:
+            _cap = cv2.VideoCapture(*cam_args)
+            backend_name = {
+                cv2.CAP_DSHOW: "CAP_DSHOW",
+                cv2.CAP_MSMF: "CAP_MSMF",
+            }.get(cam_args[1] if len(cam_args) > 1 else -1, "DEFAULT")
+            idx = cam_args[0]
+            if _cap.isOpened():
+                cap = _cap
+                debug_msgs.append(f"✅ Mở thành công: index={idx}, backend={backend_name}")
+                break
+            else:
+                debug_msgs.append(f"❌ Thất bại: index={idx}, backend={backend_name}")
+            _cap.release()
+
+        # Hiển thị log debug trong expander
+        with st.expander("🔍 Camera debug log", expanded=True):
+            for msg in debug_msgs:
+                st.text(msg)
+
+        if cap is None or not cap.isOpened():
+            st.error(
+                tr("webcam_failed") + "\n\n"
+                                      "**Gợi ý:**\n"
+                                      "- Chạy: `pip uninstall opencv-python-headless -y && pip install opencv-python`\n"
+                                      "- Đóng Zoom, Teams, OBS...\n"
+                                      "- Windows Settings → Privacy → Camera → Bật quyền cho app\n"
+                                      "- Thử cắm lại webcam USB\n"
+                                      "- Chạy lại Streamlit với quyền Admin"
+            )
             st.stop()
 
         raw_buf          = deque(maxlen=SEQ_LEN)
@@ -1145,6 +1305,12 @@ elif page == "realtime":
                         vals = []
                         for lm in hl.landmark:
                             vals.extend([lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z])
+                        # Flip X-axis cho tay trái để chuẩn hóa về dạng tay phải
+                        # (model train với MAX_NUM_HANDS_EXTRACT=1, thường là tay phải)
+                        # raw_label == "Right" trên frame đã mirror → thực tế là tay trái
+                        if raw_label == "Right":
+                            for j in range(0, len(vals), 3):
+                                vals[j] = -vals[j]  # Đảo tọa độ X tương đối
                         kp           = np.array(vals, dtype=np.float32)
                         hand_detected = True
 

@@ -1,19 +1,9 @@
-# torch
-# torchvision
-# torchaudio
-# mediapipe
-# opencv-python-headless
-# numpy
-# pandas
-# scikit-learn
-# matplotlib
-# seaborn
-# streamlit
-# Pillow
-# plotly
-streamlit
-opencv-python-headless
-numpy
+torch
+torchvision
+torchaudio
+mediapipe==0.10.9
+opencv-python<4.11
+numpy<2.0
 pandas
 torch
 plotly
@@ -21,7 +11,18 @@ mediapipe==0.10.9
 protobuf==3.20.3
 matplotlib
 seaborn
-scikit-learn
-# Cài đặt: pip install -r requirements.txt
-# Python: 3.11
-# Lưu ý mediapipe: pip install mediapipe==0.10.9 protobuf==3.20.3
+streamlit
+Pillow
+plotly
+protobuf==3.20.3
+
+# === Cài đặt ===
+# Cách 1 (Nhanh): Double-click file run.bat
+# Cách 2 (Thủ công):
+#   python -m venv .venv
+#   .venv\Scripts\activate
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+#
+# Python: 3.11+
+# Nếu gặp lỗi RAM khi cài: pip install --no-cache-dir -r requirements.txt

@@ -52,19 +52,19 @@ def augment_sequence(sequence):
     """
     seq = sequence.clone()
 
-    # 1. Nhiễu Gaussian (50% xác suất)
-    if torch.rand(1).item() > 0.5:
-        noise = torch.randn_like(seq) * 0.02
+    # 1. Nhiễu Gaussian (30% xác suất, nhẹ hơn)
+    if torch.rand(1).item() > 0.7:
+        noise = torch.randn_like(seq) * 0.01
         seq = seq + noise
 
-    # 2. Co giãn biên độ (50% xác suất)
-    if torch.rand(1).item() > 0.5:
-        scale = 0.9 + torch.rand(1).item() * 0.2  # [0.9, 1.1]
+    # 2. Co giãn biên độ (30% xác suất, nhẹ hơn)
+    if torch.rand(1).item() > 0.7:
+        scale = 0.95 + torch.rand(1).item() * 0.1  # [0.95, 1.05]
         seq = seq * scale
 
-    # 3. Dịch thời gian — xáo trộn nhẹ thứ tự frame (30% xác suất)
-    if torch.rand(1).item() > 0.7:
-        shift = torch.randint(-2, 3, (1,)).item()
+    # 3. Dịch thời gian (20% xác suất, nhẹ hơn)
+    if torch.rand(1).item() > 0.8:
+        shift = torch.randint(-1, 2, (1,)).item()
         if shift != 0:
             seq = torch.roll(seq, shifts=shift, dims=0)
 
@@ -216,17 +216,12 @@ def train(num_epochs=NUM_EPOCHS, patience=15):
     print(f"[INFO] Số lớp           : {num_classes}")
     print(f"[INFO] Danh sách nhãn   : {list(label_map.values())}")
 
-    # --- 2. Tính trọng số cho dữ liệu mất cân bằng ---
-    print("\n[INFO] Tính trọng số lớp cho dữ liệu mất cân bằng...")
-    class_weights = compute_class_weights(train_loader.dataset)
-    class_weights = class_weights.to(device)
-    print(f"[INFO] Trọng số lớp     : {class_weights.cpu().numpy().round(3)}")
-
-    # Tạo WeightedRandomSampler cho oversampling
+    # --- 2. Cân bằng lớp bằng WeightedRandomSampler (chỉ dùng 1 cách) ---
+    print("\n[INFO] Tạo WeightedRandomSampler cho cân bằng lớp...")
     sample_weights = compute_sample_weights(train_loader.dataset, num_classes)
     sampler = WeightedRandomSampler(
         weights=sample_weights,
-        num_samples=max(len(train_loader.dataset), num_classes * 10),
+        num_samples=len(train_loader.dataset),  # Không tạo thêm mẫu trùng lặp
         replacement=True,
     )
 
@@ -247,7 +242,8 @@ def train(num_epochs=NUM_EPOCHS, patience=15):
         num_classes=num_classes,
     ).to(device)
 
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    # Không dùng class_weights trong loss — sampler đã xử lý cân bằng lớp
+    criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5)
 

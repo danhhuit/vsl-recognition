@@ -15,7 +15,10 @@ class SignLanguageLSTM(nn.Module):
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
+            dropout=0.3 if num_layers > 1 else 0.0,  # Dropout giữa các LSTM layers
         )
+        self.layer_norm = nn.LayerNorm(hidden_size)  # Ổn định gradient
+        self.dropout = nn.Dropout(0.4)               # Chống overfitting trước FC
         self.fc = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -24,4 +27,6 @@ class SignLanguageLSTM(nn.Module):
 
         out, _ = self.lstm(x, (h0, c0))
         out = out[:, -1, :]
+        out = self.layer_norm(out)
+        out = self.dropout(out)
         return self.fc(out)

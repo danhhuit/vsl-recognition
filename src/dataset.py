@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 import torch
 from pathlib import Path
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, Subset
+from sklearn.model_selection import StratifiedShuffleSplit
 
 from config import (
     METADATA_PATH,
@@ -112,28 +113,42 @@ def get_dataloaders(
     num_workers=NUM_WORKERS,
     seed=RANDOM_SEED,
 ):
-    """Chia dataset thành 3 phần: Train / Validation / Test."""
+    """Chia dataset thành 3 phần: Train / Validation / Test (Stratified)."""
     dataset = VSLDataset(metadata_path=metadata_path)
 
-    total = len(dataset)
-    train_size = int(total * train_ratio)
-    test_size = int(total * test_ratio)
-    val_size = total - train_size - test_size
+    # Lấy tất cả labels cho stratified split
+    all_labels = [int(dataset.df.iloc[i]["label_id"]) for i in range(len(dataset))]
 
-    if train_size == 0 or val_size == 0 or test_size == 0:
+    # Bước 1: Tách test set (stratified — mỗi lớp đều có mẫu)
+    sss1 = StratifiedShuffleSplit(n_splits=1, test_size=test_ratio, random_state=seed)
+    trainval_idx, test_idx = next(sss1.split(range(len(dataset)), all_labels))
+
+    # Bước 2: Tách val set từ trainval
+    trainval_labels = [all_labels[i] for i in trainval_idx]
+    val_ratio_adj = (1 - train_ratio - test_ratio) / (1 - test_ratio)
+    sss2 = StratifiedShuffleSplit(n_splits=1, test_size=val_ratio_adj, random_state=seed)
+    train_idx_rel, val_idx_rel = next(sss2.split(range(len(trainval_idx)), trainval_labels))
+
+    train_idx = trainval_idx[train_idx_rel]
+    val_idx = trainval_idx[val_idx_rel]
+
+    train_dataset = Subset(dataset, train_idx)
+    val_dataset = Subset(dataset, val_idx)
+    test_dataset = Subset(dataset, test_idx)
+
+    train_size = len(train_dataset)
+    val_size = len(val_dataset)
+    test_size_actual = len(test_dataset)
+
+    if train_size == 0 or val_size == 0 or test_size_actual == 0:
         raise ValueError(
-            f"[ERROR] Không thể chia train/val/test với tổng mẫu = {total}.\n"
-            f"        train={train_size}, val={val_size}, test={test_size}"
+            f"[ERROR] Không thể chia train/val/test với tổng mẫu = {len(dataset)}.\n"
+            f"        train={train_size}, val={val_size}, test={test_size_actual}"
         )
-
-    generator = torch.Generator().manual_seed(seed)
-    train_dataset, val_dataset, test_dataset = random_split(
-        dataset, [train_size, val_size, test_size], generator=generator
-    )
 
     print(f"[INFO] Số mẫu train        : {train_size}")
     print(f"[INFO] Số mẫu validation   : {val_size}")
-    print(f"[INFO] Số mẫu test         : {test_size}")
+    print(f"[INFO] Số mẫu test         : {test_size_actual}")
 
     train_loader = DataLoader(
         train_dataset,

@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import mediapipe.python.solutions.hands as mp_hands
+import gc
 
 from config import (
     RAW_DIR,
@@ -78,6 +79,7 @@ def process_video(video_path: Path):
             frames_keypoints.append(keypoints)
 
     cap.release()
+    gc.collect()  # Giải phóng RAM sau mỗi video
 
     if num_frames_raw == 0:
         print(f"[ERROR] Video rỗng hoặc không đọc được frame: {video_path.name}")
@@ -114,6 +116,13 @@ def main():
 
     print(f"[INFO] Nhãn được phát hiện tự động: {dynamic_labels}\n")
 
+    # Đếm tổng số video để hiển thị tiến trình
+    total_videos = 0
+    for label_name in dynamic_labels:
+        total_videos += len(collect_video_files(RAW_DIR / label_name))
+    print(f"[INFO] Tổng số video cần xử lý: {total_videos}")
+    processed_count = 0
+
     for label_id, label_name in enumerate(dynamic_labels):
         label_dir = RAW_DIR / label_name
         video_files = collect_video_files(label_dir)
@@ -149,6 +158,8 @@ def main():
                 f"detected={result['num_detected_frames']} | "
                 f"status={result['status']}"
             )
+            processed_count += 1
+            print(f"[PROGRESS] {processed_count}/{total_videos}")
 
     if not rows:
         print("[ERROR] Không có dữ liệu hợp lệ nào được trích xuất.")

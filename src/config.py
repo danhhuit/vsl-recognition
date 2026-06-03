@@ -26,17 +26,17 @@ INPUT_SIZE = NUM_HAND_LANDMARKS * COORDS_PER_LANDMARK  # 63
 # =========================
 # Training config
 # =========================
-BATCH_SIZE = 16
+BATCH_SIZE = 8           # Nhỏ hơn phù hợp với dataset nhỏ (~660 mẫu)
 #no ron ẩn => kha nang ghi nho dac trung
-HIDDEN_SIZE = 128
+HIDDEN_SIZE = 64         # Giảm model size để tránh overfitting với dataset nhỏ
 #so lop LSTM xep chong len nhau
 NUM_LAYERS = 2
 #toc do hoc
-LEARNING_RATE = 1e-3
-NUM_EPOCHS = 50
-TRAIN_RATIO = 0.8
-VAL_RATIO = 0.1
-TEST_RATIO = 0.1
+LEARNING_RATE = 5e-4     # Giảm LR giúp training ổn định hơn
+NUM_EPOCHS = 100
+TRAIN_RATIO = 0.7
+VAL_RATIO = 0.15         # Tăng val/test để đánh giá đáng tin cậy hơn
+TEST_RATIO = 0.15
 NUM_WORKERS = 0  # Windows-safe default
 RANDOM_SEED = 42
 

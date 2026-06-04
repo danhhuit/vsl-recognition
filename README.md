@@ -1,5 +1,5 @@
 # 🤟 Vietnamese Sign Language Recognition
-
+Live Demo: https://danhhuit-vsl-recognition-srcapp-danh-feature-vsl-cluhzc.streamlit.app/
 Hệ thống nhận diện ngôn ngữ ký hiệu Việt Nam sử dụng **LSTM + MediaPipe**.
 
 ## ⚡ Khởi chạy nhanh (Dành cho người mới)

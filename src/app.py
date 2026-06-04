@@ -1305,12 +1305,6 @@ elif page == "realtime":
                         vals = []
                         for lm in hl.landmark:
                             vals.extend([lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z])
-                        # Flip X-axis cho tay trái để chuẩn hóa về dạng tay phải
-                        # (model train với MAX_NUM_HANDS_EXTRACT=1, thường là tay phải)
-                        # raw_label == "Right" trên frame đã mirror → thực tế là tay trái
-                        if raw_label == "Right":
-                            for j in range(0, len(vals), 3):
-                                vals[j] = -vals[j]  # Đảo tọa độ X tương đối
                         kp           = np.array(vals, dtype=np.float32)
                         hand_detected = True
 

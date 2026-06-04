@@ -192,7 +192,7 @@ def validate(model, loader, criterion, device):
 # =====================================================================
 # Pipeline huấn luyện chính
 # =====================================================================
-def train(num_epochs=NUM_EPOCHS, patience=15):
+def train(num_epochs=NUM_EPOCHS, patience=20):
     """
     Pipeline huấn luyện đầy đủ:
       1. Tải dữ liệu và phân chia Train / Val / Test
@@ -245,7 +245,7 @@ def train(num_epochs=NUM_EPOCHS, patience=15):
     # Không dùng class_weights trong loss — sampler đã xử lý cân bằng lớp
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5)
+    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=7)
 
     total_params = sum(p.numel() for p in model.parameters())
     print(f"[INFO] Tổng tham số     : {total_params:,}")

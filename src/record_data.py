@@ -8,7 +8,7 @@ def get_next_filename(label, ext=".mp4"):
     """Tự động tăng số thứ tự cho tên file video (VD: a_0000.mp4, a_0001.mp4)"""
     existing_files = list(RAW_DIR.glob(f"{label}_*{ext}"))
     if not existing_files:
-        return RAW_DIR / f"{label}_0000{ext}"
+        return RAW_DIR / f"{label}_000000{ext}"
     
     indices = []
     for f in existing_files:
@@ -20,7 +20,7 @@ def get_next_filename(label, ext=".mp4"):
             pass
             
     next_idx = max(indices) + 1 if indices else 0
-    return RAW_DIR / f"{label}_{next_idx:04d}{ext}"
+    return RAW_DIR / f"{label}_{next_idx:06d}{ext}"
 
 def main():
     # Đảm bảo thư mục lưu video đã tồn tại

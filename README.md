@@ -39,6 +39,7 @@ deep_learning/
 │   └── train.py              # Logic huấn luyện mô hình (Early stopping, LR scheduler)
 └── requirements.txt          # Danh sách thư viện Python cần thiết
 ```
+<img width="538" height="890" alt="image" src="https://github.com/user-attachments/assets/7fa491e8-73cb-40ee-bf27-fda6e335c4ba" />
 
 ---
 
